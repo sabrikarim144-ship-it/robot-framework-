@@ -1,0 +1,404 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); }
+.container { padding: 1rem 0; }
+.search-bar { position: relative; margin-bottom: 1.5rem; }
+.search-bar input { width: 100%; padding: 10px 16px 10px 40px; font-size: 14px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-lg); background: var(--color-background-primary); color: var(--color-text-primary); outline: none; }
+.search-bar input:focus { border-color: var(--color-border-primary); }
+.search-bar i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-text-secondary); font-size: 18px; pointer-events: none; }
+.filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.filter-btn { padding: 5px 14px; font-size: 13px; border: 0.5px solid var(--color-border-secondary); border-radius: 20px; background: var(--color-background-primary); color: var(--color-text-secondary); cursor: pointer; transition: all 0.15s; }
+.filter-btn:hover { background: var(--color-background-secondary); color: var(--color-text-primary); }
+.filter-btn.active { background: #EEEDFE; color: #3C3489; border-color: #AFA9EC; font-weight: 500; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 1.5rem; }
+.stat-card { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 12px; text-align: center; }
+.stat-num { font-size: 22px; font-weight: 500; color: var(--color-text-primary); }
+.stat-label { font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; }
+.section { margin-bottom: 1.5rem; }
+.section-header { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: var(--border-radius-md); cursor: pointer; user-select: none; border: 0.5px solid var(--color-border-tertiary); background: var(--color-background-secondary); margin-bottom: 4px; }
+.section-header:hover { background: var(--color-background-secondary); border-color: var(--color-border-secondary); }
+.section-title { font-size: 14px; font-weight: 500; color: var(--color-text-primary); flex: 1; }
+.section-count { font-size: 12px; color: var(--color-text-secondary); background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: 20px; padding: 2px 10px; }
+.chevron { font-size: 16px; color: var(--color-text-secondary); transition: transform 0.2s; }
+.chevron.open { transform: rotate(180deg); }
+.commands-grid { display: grid; gap: 6px; display: none; }
+.commands-grid.open { display: grid; }
+.cmd-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 12px 14px; display: grid; grid-template-columns: 200px 1fr; gap: 12px; align-items: start; }
+.cmd-card:hover { border-color: var(--color-border-secondary); }
+.cmd-name { font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: #3C3489; background: #EEEDFE; border-radius: 4px; padding: 4px 8px; word-break: break-all; line-height: 1.5; }
+.cmd-right { }
+.cmd-desc { font-size: 13px; color: var(--color-text-primary); line-height: 1.6; margin-bottom: 4px; }
+.cmd-example { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-secondary); background: var(--color-background-secondary); border-radius: 4px; padding: 3px 7px; display: inline-block; margin-top: 4px; }
+.color-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.no-results { text-align: center; padding: 2rem; color: var(--color-text-secondary); font-size: 14px; }
+</style>
+
+<div class="container">
+  <h2 class="sr-only">Récapitulatif des commandes Robot Framework avec Python</h2>
+
+  <div class="search-bar">
+    <i class="ti ti-search" aria-hidden="true"></i>
+    <input type="text" id="searchInput" placeholder="Rechercher une commande..." oninput="filterAll()">
+  </div>
+
+  <div class="stats" id="statsBar">
+    <div class="stat-card"><div class="stat-num" id="totalCount">0</div><div class="stat-label">commandes</div></div>
+    <div class="stat-card"><div class="stat-num" id="catCount">0</div><div class="stat-label">catégories</div></div>
+    <div class="stat-card"><div class="stat-num" id="visCount">0</div><div class="stat-label">affichées</div></div>
+    <div class="stat-card"><div class="stat-num" id="searchCount">-</div><div class="stat-label">résultats</div></div>
+  </div>
+
+  <div class="filters" id="filterBar"></div>
+  <div id="content"></div>
+</div>
+
+<script>
+const CATEGORIES = [
+  {
+    id: "robot_cli",
+    label: "CLI Robot Framework",
+    color: "#534AB7",
+    commands: [
+      { name: "robot <suite.robot>", desc: "Exécute un fichier ou dossier de tests Robot Framework.", example: "robot tests/login.robot" },
+      { name: "robot --include TAG", desc: "Exécute uniquement les tests ayant le tag spécifié.", example: "robot --include smoke tests/" },
+      { name: "robot --exclude TAG", desc: "Ignore les tests ayant le tag spécifié.", example: "robot --exclude slow tests/" },
+      { name: "robot --outputdir DIR", desc: "Définit le dossier de sortie pour les rapports et logs.", example: "robot --outputdir results/ tests/" },
+      { name: "robot --output FILE", desc: "Spécifie le nom du fichier XML de sortie.", example: "robot --output output.xml tests/" },
+      { name: "robot --log FILE", desc: "Définit le nom du fichier log HTML.", example: "robot --log log.html tests/" },
+      { name: "robot --report FILE", desc: "Définit le nom du fichier rapport HTML.", example: "robot --report report.html tests/" },
+      { name: "robot --variable VAR:VAL", desc: "Définit une variable depuis la ligne de commande.", example: "robot --variable ENV:prod tests/" },
+      { name: "robot --variablefile FILE", desc: "Charge des variables depuis un fichier Python.", example: "robot --variablefile vars.py tests/" },
+      { name: "robot --dryrun", desc: "Simule l'exécution sans réellement exécuter les tests.", example: "robot --dryrun tests/" },
+      { name: "robot --loglevel LEVEL", desc: "Définit le niveau de log (DEBUG, INFO, WARN, ERROR).", example: "robot --loglevel DEBUG tests/" },
+      { name: "robot --name NAME", desc: "Définit le nom de la suite de tests racine.", example: "robot --name MySuite tests/" },
+      { name: "robot --listener FILE", desc: "Attache un listener externe pour observer l'exécution.", example: "robot --listener MyListener.py tests/" },
+      { name: "robot --test NAME", desc: "Exécute uniquement le test dont le nom correspond.", example: "robot --test 'Login Test' tests/" },
+      { name: "robot --suite NAME", desc: "Exécute uniquement la suite dont le nom correspond.", example: "robot --suite LoginSuite tests/" },
+    ]
+  },
+  {
+    id: "builtin",
+    label: "BuiltIn Library",
+    color: "#0F6E56",
+    commands: [
+      { name: "Log", desc: "Affiche un message dans le log. Niveaux disponibles : DEBUG, INFO, WARN, ERROR.", example: "Log    Connexion réussie    INFO" },
+      { name: "Log Many", desc: "Affiche plusieurs éléments dans le log, un par ligne.", example: "Log Many    item1    item2    item3" },
+      { name: "Log To Console", desc: "Affiche un message directement dans la console (stdout).", example: "Log To Console    Test en cours..." },
+      { name: "Should Be Equal", desc: "Vérifie que deux valeurs sont strictement égales. Lève une erreur sinon.", example: "Should Be Equal    ${result}    success" },
+      { name: "Should Not Be Equal", desc: "Vérifie que deux valeurs sont différentes.", example: "Should Not Be Equal    ${status}    error" },
+      { name: "Should Be True", desc: "Vérifie qu'une expression Python est vraie.", example: "Should Be True    ${count} > 0" },
+      { name: "Should Be False", desc: "Vérifie qu'une expression Python est fausse.", example: "Should Be False    ${is_empty}" },
+      { name: "Should Contain", desc: "Vérifie qu'une chaîne ou liste contient un élément.", example: "Should Contain    ${text}    hello" },
+      { name: "Should Not Contain", desc: "Vérifie qu'une chaîne ou liste ne contient pas un élément.", example: "Should Not Contain    ${text}    error" },
+      { name: "Should Start With", desc: "Vérifie qu'une chaîne commence par le préfixe donné.", example: "Should Start With    ${url}    https" },
+      { name: "Should End With", desc: "Vérifie qu'une chaîne se termine par le suffixe donné.", example: "Should End With    ${file}    .csv" },
+      { name: "Should Match", desc: "Vérifie qu'une chaîne correspond à un pattern glob.", example: "Should Match    ${name}    user_*" },
+      { name: "Should Match Regexp", desc: "Vérifie qu'une chaîne correspond à une expression régulière.", example: "Should Match Regexp    ${email}    ^[\\w.]+@[\\w]+\\.\\w+$" },
+      { name: "Variable Should Exist", desc: "Vérifie qu'une variable est définie dans le contexte courant.", example: "Variable Should Exist    ${USERNAME}" },
+      { name: "Set Variable", desc: "Assigne une valeur à une variable.", example: "${name}=    Set Variable    Alice" },
+      { name: "Set Global Variable", desc: "Définit une variable accessible dans tous les suites et tests.", example: "Set Global Variable    ${TOKEN}    abc123" },
+      { name: "Set Suite Variable", desc: "Définit une variable accessible dans toute la suite courante.", example: "Set Suite Variable    ${DB_CONN}    ${conn}" },
+      { name: "Set Test Variable", desc: "Définit une variable accessible dans le test courant uniquement.", example: "Set Test Variable    ${temp}    42" },
+      { name: "Get Variable Value", desc: "Retourne la valeur d'une variable ou une valeur par défaut si inexistante.", example: "${val}=    Get Variable Value    ${X}    default" },
+      { name: "Evaluate", desc: "Évalue une expression Python et retourne le résultat.", example: "${sum}=    Evaluate    2 + 2" },
+      { name: "Convert To Integer", desc: "Convertit une valeur en entier Python.", example: "${n}=    Convert To Integer    42.7" },
+      { name: "Convert To String", desc: "Convertit une valeur en chaîne de caractères.", example: "${s}=    Convert To String    ${num}" },
+      { name: "Convert To Boolean", desc: "Convertit une valeur en booléen Python.", example: "${b}=    Convert To Boolean    True" },
+      { name: "Convert To List", desc: "Convertit un itérable en liste Python.", example: "${l}=    Convert To List    ${tuple}" },
+      { name: "Run Keyword", desc: "Exécute dynamiquement un keyword dont le nom est passé en argument.", example: "Run Keyword    ${kw_name}    ${arg}" },
+      { name: "Run Keyword If", desc: "Exécute un keyword si la condition est vraie.", example: "Run Keyword If    '${env}'=='prod'    Deploy Prod" },
+      { name: "Run Keyword Unless", desc: "Exécute un keyword si la condition est fausse.", example: "Run Keyword Unless    ${debug}    Send Alert" },
+      { name: "Run Keyword And Return", desc: "Exécute un keyword et retourne directement sa valeur.", example: "Run Keyword And Return    Get Status" },
+      { name: "Run Keyword And Continue On Failure", desc: "Exécute un keyword et continue même en cas d'échec.", example: "Run Keyword And Continue On Failure    Check Dashboard" },
+      { name: "Run Keyword And Ignore Error", desc: "Exécute un keyword et ignore toute erreur. Retourne le statut et le message.", example: "${status}    ${msg}=    Run Keyword And Ignore Error    Login" },
+      { name: "Run Keywords", desc: "Exécute plusieurs keywords séparés par AND.", example: "Run Keywords    Open Browser    AND    Login    AND    Logout" },
+      { name: "Fail", desc: "Fait échouer le test avec un message personnalisé.", example: "Fail    L'API n'a pas répondu" },
+      { name: "Pass Execution", desc: "Arrête l'exécution du test et le marque comme réussi.", example: "Pass Execution    Condition atteinte, test terminé" },
+      { name: "Skip", desc: "Marque le test courant comme ignoré.", example: "Skip    Fonctionnalité non disponible en staging" },
+      { name: "Fatal Error", desc: "Arrête immédiatement toute l'exécution en levant une erreur fatale.", example: "Fatal Error    Configuration manquante" },
+      { name: "Sleep", desc: "Met en pause l'exécution pour une durée donnée.", example: "Sleep    2s" },
+      { name: "Get Time", desc: "Retourne l'heure/date courante sous différents formats.", example: "${now}=    Get Time    epoch" },
+      { name: "Get Length", desc: "Retourne la longueur d'une chaîne, liste ou dictionnaire.", example: "${len}=    Get Length    ${my_list}" },
+      { name: "Length Should Be", desc: "Vérifie que la longueur d'un objet est exactement N.", example: "Length Should Be    ${items}    5" },
+      { name: "Catenate", desc: "Concatène plusieurs chaînes avec un séparateur optionnel.", example: "${full}=    Catenate    SEPARATOR=-    hello    world" },
+      { name: "Create List", desc: "Crée une liste avec les arguments donnés.", example: "${l}=    Create List    a    b    c" },
+      { name: "Create Dictionary", desc: "Crée un dictionnaire à partir de paires clé=valeur.", example: "${d}=    Create Dictionary    name=Alice    age=30" },
+      { name: "Set Tags", desc: "Ajoute des tags au test courant.", example: "Set Tags    regression    smoke" },
+      { name: "Remove Tags", desc: "Retire des tags du test courant.", example: "Remove Tags    slow" },
+      { name: "Import Library", desc: "Importe dynamiquement une bibliothèque pendant l'exécution.", example: "Import Library    SeleniumLibrary" },
+      { name: "Import Resource", desc: "Importe dynamiquement un fichier de ressources.", example: "Import Resource    keywords/common.robot" },
+      { name: "Wait Until Keyword Succeeds", desc: "Réessaie un keyword jusqu'à sa réussite ou un timeout.", example: "Wait Until Keyword Succeeds    30s    5s    Check Status" },
+      { name: "Repeat Keyword", desc: "Exécute un keyword un nombre de fois défini.", example: "Repeat Keyword    3    Click Submit" },
+    ]
+  },
+  {
+    id: "string",
+    label: "String Library",
+    color: "#993C1D",
+    commands: [
+      { name: "Get Length", desc: "Retourne le nombre de caractères d'une chaîne.", example: "${n}=    Get Length    hello" },
+      { name: "Convert To Uppercase", desc: "Convertit toute la chaîne en majuscules.", example: "${up}=    Convert To Uppercase    hello" },
+      { name: "Convert To Lowercase", desc: "Convertit toute la chaîne en minuscules.", example: "${low}=    Convert To Lowercase    HELLO" },
+      { name: "Encode String To Bytes", desc: "Encode une chaîne en bytes selon l'encodage spécifié.", example: "${b}=    Encode String To Bytes    hello    utf-8" },
+      { name: "Decode Bytes To String", desc: "Décode des bytes en chaîne selon l'encodage spécifié.", example: "${s}=    Decode Bytes To String    ${b}    utf-8" },
+      { name: "Format String", desc: "Formate une chaîne avec des arguments positionnels ou nommés.", example: "${s}=    Format String    Hello {}!    World" },
+      { name: "Get Line", desc: "Retourne la ligne N (0-indexée) d'un texte multiligne.", example: "${line}=    Get Line    ${text}    0" },
+      { name: "Get Line Count", desc: "Retourne le nombre de lignes dans un texte.", example: "${n}=    Get Line Count    ${text}" },
+      { name: "Get Lines Containing String", desc: "Retourne toutes les lignes contenant la sous-chaîne donnée.", example: "${lines}=    Get Lines Containing String    ${log}    ERROR" },
+      { name: "Get Lines Matching Pattern", desc: "Retourne les lignes correspondant à un pattern glob.", example: "${lines}=    Get Lines Matching Pattern    ${text}    *WARN*" },
+      { name: "Get Lines Matching Regexp", desc: "Retourne les lignes correspondant à une expression régulière.", example: "${lines}=    Get Lines Matching Regexp    ${text}    ^\\d+" },
+      { name: "Get Substring", desc: "Extrait une sous-chaîne entre deux indices.", example: "${sub}=    Get Substring    Hello World    0    5" },
+      { name: "Replace String", desc: "Remplace toutes les occurrences d'une sous-chaîne par une autre.", example: "${new}=    Replace String    foo bar foo    foo    baz" },
+      { name: "Replace String Using Regexp", desc: "Remplace les occurrences correspondant à une regex.", example: "${new}=    Replace String Using Regexp    abc123    \\d+    NUM" },
+      { name: "Remove String", desc: "Supprime toutes les occurrences d'une sous-chaîne.", example: "${clean}=    Remove String    hello world    world" },
+      { name: "Remove String Using Regexp", desc: "Supprime les correspondances d'une regex.", example: "${clean}=    Remove String Using Regexp    a1b2c3    \\d" },
+      { name: "Split String", desc: "Divise une chaîne selon un séparateur.", example: "${parts}=    Split String    a,b,c    ," },
+      { name: "Split String To Characters", desc: "Divise une chaîne en liste de caractères individuels.", example: "${chars}=    Split String To Characters    abc" },
+      { name: "Strip String", desc: "Retire les espaces (ou caractères spécifiés) en début et fin.", example: "${s}=    Strip String    ${raw}" },
+      { name: "Should Be String", desc: "Vérifie que la valeur est bien une chaîne de caractères.", example: "Should Be String    ${value}" },
+      { name: "Should Not Be String", desc: "Vérifie que la valeur n'est pas une chaîne.", example: "Should Not Be String    ${num}" },
+    ]
+  },
+  {
+    id: "collections",
+    label: "Collections Library",
+    color: "#185FA5",
+    commands: [
+      { name: "Append To List", desc: "Ajoute un élément à la fin d'une liste.", example: "Append To List    ${list}    newItem" },
+      { name: "Insert Into List", desc: "Insère un élément à l'indice spécifié dans une liste.", example: "Insert Into List    ${list}    0    first" },
+      { name: "Remove From List", desc: "Supprime et retourne l'élément à l'indice donné.", example: "${item}=    Remove From List    ${list}    0" },
+      { name: "Remove Values From List", desc: "Supprime toutes les occurrences des valeurs données dans la liste.", example: "Remove Values From List    ${list}    bad    invalid" },
+      { name: "Remove Duplicates", desc: "Retourne la liste sans doublons, en préservant l'ordre.", example: "${uniq}=    Remove Duplicates    ${list}" },
+      { name: "Get From List", desc: "Retourne l'élément à l'indice donné (supporte les indices négatifs).", example: "${first}=    Get From List    ${list}    0" },
+      { name: "Get Slice From List", desc: "Retourne une sous-liste entre deux indices.", example: "${sub}=    Get Slice From List    ${list}    1    3" },
+      { name: "Get Index From List", desc: "Retourne l'indice de la première occurrence d'une valeur.", example: "${i}=    Get Index From List    ${list}    foo" },
+      { name: "List Should Contain Value", desc: "Vérifie qu'une liste contient une valeur donnée.", example: "List Should Contain Value    ${list}    expected" },
+      { name: "List Should Not Contain Value", desc: "Vérifie qu'une liste ne contient pas une valeur.", example: "List Should Not Contain Value    ${list}    bad" },
+      { name: "Lists Should Be Equal", desc: "Vérifie que deux listes sont identiques (même ordre).", example: "Lists Should Be Equal    ${list1}    ${list2}" },
+      { name: "Reverse List", desc: "Inverse l'ordre des éléments d'une liste en place.", example: "Reverse List    ${list}" },
+      { name: "Sort List", desc: "Trie une liste en place par ordre croissant.", example: "Sort List    ${list}" },
+      { name: "Count Values In List", desc: "Compte le nombre d'occurrences d'une valeur dans une liste.", example: "${n}=    Count Values In List    ${list}    ok" },
+      { name: "Get From Dictionary", desc: "Retourne la valeur associée à une clé dans un dictionnaire.", example: "${val}=    Get From Dictionary    ${dict}    name" },
+      { name: "Get Dictionary Keys", desc: "Retourne la liste des clés du dictionnaire.", example: "${keys}=    Get Dictionary Keys    ${dict}" },
+      { name: "Get Dictionary Values", desc: "Retourne la liste des valeurs du dictionnaire.", example: "${vals}=    Get Dictionary Values    ${dict}" },
+      { name: "Get Dictionary Items", desc: "Retourne la liste des paires (clé, valeur) du dictionnaire.", example: "${items}=    Get Dictionary Items    ${dict}" },
+      { name: "Set To Dictionary", desc: "Ajoute ou met à jour des paires clé=valeur dans un dictionnaire.", example: "Set To Dictionary    ${dict}    status=ok" },
+      { name: "Remove From Dictionary", desc: "Supprime les clés spécifiées du dictionnaire.", example: "Remove From Dictionary    ${dict}    temp_key" },
+      { name: "Pop From Dictionary", desc: "Supprime et retourne la valeur d'une clé (avec valeur par défaut optionnelle).", example: "${v}=    Pop From Dictionary    ${dict}    key    default" },
+      { name: "Dictionary Should Contain Key", desc: "Vérifie que le dictionnaire possède la clé spécifiée.", example: "Dictionary Should Contain Key    ${dict}    id" },
+      { name: "Dictionary Should Not Contain Key", desc: "Vérifie que le dictionnaire ne possède pas la clé.", example: "Dictionary Should Not Contain Key    ${dict}    secret" },
+      { name: "Dictionary Should Contain Value", desc: "Vérifie que le dictionnaire contient la valeur.", example: "Dictionary Should Contain Value    ${dict}    active" },
+      { name: "Dictionaries Should Be Equal", desc: "Vérifie que deux dictionnaires ont les mêmes clés et valeurs.", example: "Dictionaries Should Be Equal    ${d1}    ${d2}" },
+      { name: "Keep In Dictionary", desc: "Conserve uniquement les clés spécifiées, supprime les autres.", example: "Keep In Dictionary    ${dict}    name    email" },
+      { name: "Merge Into Dictionary", desc: "Fusionne un ou plusieurs dictionnaires dans le dictionnaire cible.", example: "Merge Into Dictionary    ${base}    ${extra}" },
+      { name: "Copy List", desc: "Retourne une copie superficielle de la liste.", example: "${copy}=    Copy List    ${original}" },
+      { name: "Copy Dictionary", desc: "Retourne une copie superficielle du dictionnaire.", example: "${copy}=    Copy Dictionary    ${original}" },
+    ]
+  },
+  {
+    id: "operatingsystem",
+    label: "OperatingSystem Library",
+    color: "#3B6D11",
+    commands: [
+      { name: "File Should Exist", desc: "Vérifie qu'un fichier existe à l'emplacement donné.", example: "File Should Exist    /tmp/output.csv" },
+      { name: "File Should Not Exist", desc: "Vérifie qu'un fichier n'existe pas.", example: "File Should Not Exist    /tmp/temp.lock" },
+      { name: "Directory Should Exist", desc: "Vérifie qu'un répertoire existe.", example: "Directory Should Exist    /tmp/results" },
+      { name: "Create Directory", desc: "Crée un répertoire (et les parents si nécessaire).", example: "Create Directory    /tmp/my_dir" },
+      { name: "Remove Directory", desc: "Supprime un répertoire, récursivement si spécifié.", example: "Remove Directory    /tmp/old_dir    recursive=True" },
+      { name: "Copy File", desc: "Copie un fichier vers une destination.", example: "Copy File    source.txt    backup/source.txt" },
+      { name: "Move File", desc: "Déplace un fichier vers une destination.", example: "Move File    /tmp/result.txt    /archive/result.txt" },
+      { name: "Remove File", desc: "Supprime un fichier.", example: "Remove File    /tmp/temp.txt" },
+      { name: "Create File", desc: "Crée un fichier avec un contenu optionnel.", example: "Create File    /tmp/test.txt    Hello World" },
+      { name: "Append To File", desc: "Ajoute du contenu à la fin d'un fichier existant.", example: "Append To File    /tmp/log.txt    New line\\n" },
+      { name: "Get File", desc: "Lit et retourne le contenu d'un fichier texte.", example: "${content}=    Get File    /tmp/test.txt" },
+      { name: "Get Binary File", desc: "Lit et retourne le contenu binaire d'un fichier.", example: "${data}=    Get Binary File    /tmp/img.png" },
+      { name: "Get File Size", desc: "Retourne la taille d'un fichier en octets.", example: "${size}=    Get File Size    /tmp/data.csv" },
+      { name: "Log File", desc: "Lit un fichier et l'affiche dans les logs.", example: "Log File    /tmp/output.log" },
+      { name: "List Files In Directory", desc: "Retourne la liste des fichiers dans un répertoire.", example: "${files}=    List Files In Directory    /tmp" },
+      { name: "List Directory", desc: "Retourne la liste de tous les éléments (fichiers + dossiers) d'un répertoire.", example: "${items}=    List Directory    /tmp" },
+      { name: "Run", desc: "Exécute une commande shell et retourne sa sortie.", example: "${out}=    Run    ls -la /tmp" },
+      { name: "Run And Return Rc", desc: "Exécute une commande et retourne son code de retour.", example: "${rc}=    Run And Return Rc    ping -c 1 google.com" },
+      { name: "Run And Return Rc And Output", desc: "Exécute une commande et retourne le code de retour et la sortie.", example: "${rc}    ${out}=    Run And Return Rc And Output    whoami" },
+      { name: "Get Environment Variable", desc: "Retourne la valeur d'une variable d'environnement.", example: "${home}=    Get Environment Variable    HOME" },
+      { name: "Set Environment Variable", desc: "Définit une variable d'environnement.", example: "Set Environment Variable    MY_VAR    hello" },
+      { name: "Environment Variable Should Be Set", desc: "Vérifie qu'une variable d'environnement est définie.", example: "Environment Variable Should Be Set    PATH" },
+      { name: "Get Working Directory", desc: "Retourne le répertoire de travail courant.", example: "${cwd}=    Get Working Directory" },
+    ]
+  },
+  {
+    id: "process",
+    label: "Process Library",
+    color: "#854F0B",
+    commands: [
+      { name: "Start Process", desc: "Lance un processus en arrière-plan et retourne un handle.", example: "${proc}=    Start Process    python    server.py    alias=srv" },
+      { name: "Run Process", desc: "Exécute un processus, attend sa fin et retourne le résultat.", example: "${res}=    Run Process    python    -c    print('hi')" },
+      { name: "Wait For Process", desc: "Attend la fin d'un processus lancé en arrière-plan.", example: "Wait For Process    ${proc}    timeout=30s" },
+      { name: "Terminate Process", desc: "Envoie un signal SIGTERM au processus.", example: "Terminate Process    ${proc}" },
+      { name: "Terminate All Processes", desc: "Termine tous les processus lancés via cette bibliothèque.", example: "Terminate All Processes" },
+      { name: "Get Process Id", desc: "Retourne le PID du processus.", example: "${pid}=    Get Process Id    ${proc}" },
+      { name: "Get Process Object", desc: "Retourne l'objet subprocess.Popen sous-jacent.", example: "${p}=    Get Process Object    ${proc}" },
+      { name: "Get Process Result", desc: "Retourne le résultat d'un processus terminé (rc, stdout, stderr).", example: "${res}=    Get Process Result    ${proc}" },
+      { name: "Is Process Running", desc: "Retourne True si le processus est encore actif.", example: "${running}=    Is Process Running    ${proc}" },
+      { name: "Process Should Be Running", desc: "Vérifie que le processus est actif, sinon échoue.", example: "Process Should Be Running    ${proc}" },
+      { name: "Process Should Be Stopped", desc: "Vérifie que le processus est terminé, sinon échoue.", example: "Process Should Be Stopped    ${proc}" },
+      { name: "Send Signal To Process", desc: "Envoie un signal système au processus (ex: SIGKILL).", example: "Send Signal To Process    SIGKILL    ${proc}" },
+      { name: "Switch Process", desc: "Bascule le processus actif courant (alias).", example: "Switch Process    srv" },
+    ]
+  },
+  {
+    id: "requestslibrary",
+    label: "RequestsLibrary (HTTP)",
+    color: "#993556",
+    commands: [
+      { name: "Create Session", desc: "Crée une session HTTP réutilisable avec alias et URL de base.", example: "Create Session    api    https://api.example.com" },
+      { name: "GET On Session", desc: "Effectue une requête GET sur la session créée.", example: "${resp}=    GET On Session    api    /users" },
+      { name: "POST On Session", desc: "Effectue une requête POST avec un corps JSON ou form.", example: "${resp}=    POST On Session    api    /login    json=${creds}" },
+      { name: "PUT On Session", desc: "Effectue une requête PUT pour mettre à jour une ressource.", example: "${resp}=    PUT On Session    api    /users/1    json=${data}" },
+      { name: "PATCH On Session", desc: "Effectue une requête PATCH pour modifier partiellement une ressource.", example: "${resp}=    PATCH On Session    api    /users/1    json=${partial}" },
+      { name: "DELETE On Session", desc: "Effectue une requête DELETE sur la session.", example: "${resp}=    DELETE On Session    api    /users/1" },
+      { name: "HEAD On Session", desc: "Effectue une requête HEAD (headers uniquement, sans body).", example: "${resp}=    HEAD On Session    api    /health" },
+      { name: "OPTIONS On Session", desc: "Effectue une requête OPTIONS pour connaître les méthodes autorisées.", example: "${resp}=    OPTIONS On Session    api    /users" },
+      { name: "Delete All Sessions", desc: "Supprime toutes les sessions HTTP créées.", example: "Delete All Sessions" },
+      { name: "Session Should Exist", desc: "Vérifie qu'une session avec l'alias donné existe.", example: "Session Should Exist    api" },
+      { name: "Request Should Be Successful", desc: "Vérifie que la réponse a un code de succès (2xx).", example: "Request Should Be Successful    ${resp}" },
+      { name: "Status Should Be", desc: "Vérifie que le code de statut HTTP correspond à la valeur attendue.", example: "Status Should Be    200    ${resp}" },
+    ]
+  },
+  {
+    id: "pabot",
+    label: "pabot / Parallel",
+    color: "#444441",
+    commands: [
+      { name: "pabot --processes N <suite>", desc: "Exécute les tests en parallèle avec N processus simultanés.", example: "pabot --processes 4 tests/" },
+      { name: "pabot --testlevelsplit", desc: "Découpe la parallélisation au niveau des tests (et non des suites).", example: "pabot --processes 4 --testlevelsplit tests/" },
+      { name: "pabot --resourcefile FILE", desc: "Spécifie un fichier de ressources partagées entre processus.", example: "pabot --resourcefile res.dat tests/" },
+      { name: "pabot --pabotlib", desc: "Active la bibliothèque pabot pour les verrous et ressources partagées.", example: "pabot --pabotlib tests/" },
+      { name: "Acquire Lock", desc: "(PabotLib) Acquiert un verrou nommé pour synchroniser les processus parallèles.", example: "Acquire Lock    db_access" },
+      { name: "Release Lock", desc: "(PabotLib) Libère un verrou précédemment acquis.", example: "Release Lock    db_access" },
+      { name: "Acquire Value Set", desc: "(PabotLib) Acquiert un ensemble de valeurs exclusif parmi plusieurs processus.", example: "Acquire Value Set" },
+      { name: "Release Value Set", desc: "(PabotLib) Libère l'ensemble de valeurs précédemment acquis.", example: "Release Value Set" },
+      { name: "Get Parallel Value For Key", desc: "(PabotLib) Retourne la valeur associée à une clé dans le value set actif.", example: "${user}=    Get Parallel Value For Key    username" },
+    ]
+  }
+];
+
+let activeCategory = "all";
+
+function filterAll() {
+  const q = document.getElementById("searchInput").value.toLowerCase().trim();
+  let totalVis = 0;
+  let searchHits = 0;
+
+  CATEGORIES.forEach(cat => {
+    const section = document.getElementById("sec_" + cat.id);
+    const grid = document.getElementById("grid_" + cat.id);
+    let catVis = 0;
+
+    cat.commands.forEach(cmd => {
+      const card = document.getElementById("card_" + cat.id + "_" + cmd.name.replace(/\s+/g,"_"));
+      const inCategory = activeCategory === "all" || activeCategory === cat.id;
+      const matchesSearch = !q || cmd.name.toLowerCase().includes(q) || cmd.desc.toLowerCase().includes(q) || cmd.example.toLowerCase().includes(q);
+      const show = inCategory && matchesSearch;
+      if (card) card.style.display = show ? "" : "none";
+      if (show) { catVis++; totalVis++; }
+      if (matchesSearch && inCategory) searchHits++;
+    });
+
+    if (section) section.style.display = catVis === 0 ? "none" : "";
+    const countEl = document.getElementById("cnt_" + cat.id);
+    if (countEl) countEl.textContent = catVis;
+  });
+
+  const total = CATEGORIES.reduce((s, c) => s + c.commands.length, 0);
+  document.getElementById("totalCount").textContent = total;
+  document.getElementById("catCount").textContent = CATEGORIES.length;
+  document.getElementById("visCount").textContent = totalVis;
+  document.getElementById("searchCount").textContent = q ? searchHits : "-";
+
+  document.getElementById("noResults").style.display = totalVis === 0 ? "" : "none";
+}
+
+function setCategory(id) {
+  activeCategory = id;
+  document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById("fb_" + id).classList.add("active");
+  filterAll();
+}
+
+function toggleSection(id) {
+  const grid = document.getElementById("grid_" + id);
+  const chevron = document.getElementById("chev_" + id);
+  const open = grid.classList.toggle("open");
+  chevron.classList.toggle("open", open);
+}
+
+function build() {
+  const filterBar = document.getElementById("filterBar");
+  const content = document.getElementById("content");
+
+  const allBtn = document.createElement("button");
+  allBtn.className = "filter-btn active";
+  allBtn.id = "fb_all";
+  allBtn.textContent = "Toutes les catégories";
+  allBtn.onclick = () => setCategory("all");
+  filterBar.appendChild(allBtn);
+
+  CATEGORIES.forEach(cat => {
+    const btn = document.createElement("button");
+    btn.className = "filter-btn";
+    btn.id = "fb_" + cat.id;
+    btn.style.cssText = `border-color: ${cat.color}33; color: ${cat.color};`;
+    btn.textContent = cat.label;
+    btn.onclick = () => setCategory(cat.id);
+    filterBar.appendChild(btn);
+
+    const section = document.createElement("div");
+    section.className = "section";
+    section.id = "sec_" + cat.id;
+
+    const header = document.createElement("div");
+    header.className = "section-header";
+    header.onclick = () => toggleSection(cat.id);
+    header.innerHTML = `
+      <span class="color-dot" style="background:${cat.color}"></span>
+      <span class="section-title">${cat.label}</span>
+      <span class="section-count" id="cnt_${cat.id}">${cat.commands.length}</span>
+      <i class="ti ti-chevron-down chevron" id="chev_${cat.id}" aria-hidden="true"></i>
+    `;
+    section.appendChild(header);
+
+    const grid = document.createElement("div");
+    grid.className = "commands-grid open";
+    grid.id = "grid_" + cat.id;
+
+    cat.commands.forEach(cmd => {
+      const card = document.createElement("div");
+      card.className = "cmd-card";
+      card.id = "card_" + cat.id + "_" + cmd.name.replace(/\s+/g,"_");
+      card.innerHTML = `
+        <div class="cmd-name">${cmd.name}</div>
+        <div class="cmd-right">
+          <div class="cmd-desc">${cmd.desc}</div>
+          <div class="cmd-example">${cmd.example}</div>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+
+    section.appendChild(grid);
+    content.appendChild(section);
+  });
+
+  const noRes = document.createElement("div");
+  noRes.className = "no-results";
+  noRes.id = "noResults";
+  noRes.style.display = "none";
+  noRes.innerHTML = '<i class="ti ti-search-off" aria-hidden="true" style="font-size:24px; display:block; margin-bottom:8px"></i>Aucune commande trouvée';
+  content.appendChild(noRes);
+
+  filterAll();
+}
+
+build();
+</script>
