@@ -3,279 +3,254 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Robot Framework Assistant - Lexique Intelligent</title>
+    <title>Robot Framework - Dictionnaire Complet</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
     <style>
         :root {
             --primary: #3C3489;
             --primary-light: #EEEDFE;
-            --bg: #F8FAFC;
+            --bg: #F0F2F5;
             --card-bg: #FFFFFF;
             --text-main: #1E293B;
             --text-muted: #64748B;
             --border: #E2E8F0;
-            --success: #10B981;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', system-ui, sans-serif;
             background-color: var(--bg);
             color: var(--text-main);
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
+            margin: 0; padding: 20px;
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
+        .container { max-width: 1300px; margin: 0 auto; }
+
+        header { text-align: center; margin-bottom: 30px; }
+        header h1 { color: var(--primary); margin-bottom: 5px; }
+
+        /* Moteur de recherche */
+        .search-area {
+            position: sticky;
+            top: 10px;
+            z-index: 1000;
+            background: var(--bg);
+            padding: 10px 0 20px;
         }
 
-        .header h1 { color: var(--primary); margin-bottom: 10px; }
-        .header p { color: var(--text-muted); }
-
-        /* Barre de recherche */
-        .search-container {
-            max-width: 800px;
-            margin: 0 auto 30px;
+        .search-wrapper {
             position: relative;
+            max-width: 900px;
+            margin: 0 auto;
         }
 
         #searchInput {
             width: 100%;
-            padding: 18px 20px 18px 50px;
-            font-size: 16px;
+            padding: 16px 20px 16px 50px;
+            font-size: 1.1rem;
             border: 2px solid var(--border);
             border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
             outline: none;
-            transition: all 0.2s;
         }
 
-        #searchInput:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px var(--primary-light);
-        }
+        #searchInput:focus { border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-light); }
 
-        .search-icon {
-            position: absolute;
-            left: 18px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 24px;
-            color: var(--text-muted);
-        }
+        .search-icon { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); font-size: 24px; color: var(--text-muted); }
 
-        /* Tags d'aide à la recherche */
-        .search-hints {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-top: 15px;
-        }
-
-        .hint-tag {
+        /* Filtres */
+        .filters { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-top: 15px; }
+        .filter-btn {
+            padding: 6px 12px;
             background: white;
-            padding: 5px 12px;
+            border: 1px solid var(--border);
             border-radius: 20px;
-            font-size: 12px;
-            color: var(--primary);
-            border: 1px solid var(--primary);
+            font-size: 13px;
             cursor: pointer;
             transition: 0.2s;
         }
+        .filter-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
 
-        .hint-tag:hover { background: var(--primary-light); }
-
-        /* Grille de résultats */
-        .results-grid {
-            max-width: 1100px;
-            margin: 0 auto;
+        /* Grille et Cartes */
+        #mainGrid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 15px;
         }
 
         .card {
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            padding: 16px;
             border: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            transition: transform 0.2s, box-shadow 0.2s;
-            position: relative;
+            transition: transform 0.2s;
         }
 
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        }
+        .card:hover { transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0,0,0,0.05); }
 
-        .library-badge {
+        .badge {
             font-size: 10px;
             font-weight: bold;
-            text-transform: uppercase;
-            padding: 4px 8px;
+            padding: 3px 8px;
             border-radius: 4px;
-            width: fit-content;
             margin-bottom: 10px;
+            width: fit-content;
+            text-transform: uppercase;
         }
 
-        .cmd-name {
+        .cmd-name { font-family: 'Consolas', monospace; font-weight: bold; color: var(--primary); margin-bottom: 6px; font-size: 14px; }
+        .cmd-desc { font-size: 13px; color: var(--text-main); line-height: 1.4; margin-bottom: 12px; flex-grow: 1; }
+        
+        .cmd-ex {
+            background: #F8FAFC;
+            padding: 8px;
+            border-radius: 5px;
             font-family: 'Consolas', monospace;
-            font-size: 15px;
-            font-weight: bold;
-            color: var(--primary);
-            margin-bottom: 8px;
-        }
-
-        .cmd-desc {
-            font-size: 14px;
-            color: var(--text-main);
-            flex-grow: 1;
-        }
-
-        .cmd-example {
-            margin-top: 15px;
-            background: #f1f5f9;
-            padding: 10px;
-            border-radius: 6px;
-            font-family: 'Consolas', monospace;
-            font-size: 12px;
+            font-size: 11px;
             color: #475569;
-            cursor: pointer;
-            position: relative;
+            border-left: 3px solid var(--primary);
+            cursor: copy;
         }
 
-        .cmd-example:hover::after {
-            content: "Copier 📋";
-            position: absolute;
-            right: 10px;
-            color: var(--primary);
-        }
+        /* Couleurs Catégories */
+        .c-cli { background: #E0E7FF; color: #4338CA; }
+        .c-builtin { background: #DCFCE7; color: #15803D; }
+        .c-string { background: #FFEDD5; color: #9A3412; }
+        .c-col { background: #DBEAFE; color: #1D4ED8; }
+        .c-os { background: #F0FDF4; color: #166534; }
+        .c-proc { background: #FEF3C7; color: #92400E; }
+        .c-req { background: #FCE7F3; color: #9D174D; }
+        .c-pabot { background: #F1F5F9; color: #475569; }
 
-        .no-results {
-            grid-column: 1 / -1;
-            text-align: center;
-            padding: 50px;
-            color: var(--text-muted);
-        }
-
-        /* Couleurs des bibliothèques */
-        .bg-builtin { background: #dcfce7; color: #166534; }
-        .bg-string { background: #fef3c7; color: #92400e; }
-        .bg-collections { background: #dbeafe; color: #1e40af; }
-        .bg-os { background: #ede9fe; color: #5b21b6; }
-        .bg-http { background: #fee2e2; color: #991b1b; }
-        .bg-cli { background: #f1f5f9; color: #334155; }
+        .no-results { grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-muted); }
     </style>
 </head>
 <body>
 
-<div class="header">
-    <h1>Robot Framework Helper</h1>
-    <p>Trouvez le mot-clé dont vous avez besoin pour vos tests automatisés</p>
-</div>
+<div class="container">
+    <header>
+        <h1>Robot Framework Master Lexique</h1>
+        <p>L'intégralité des commandes Python & Robot Framework</p>
+    </header>
 
-<div class="search-container">
-    <i class="ti ti-search search-icon"></i>
-    <input type="text" id="searchInput" placeholder="Que voulez-vous faire ? (ex: vérifier, attendre, dossier, fichier, api...)">
-    
-    <div class="search-hints">
-        <span class="hint-tag" onclick="quickSearch('vérifier')">Vérifier</span>
-        <span class="hint-tag" onclick="quickSearch('attendre')">Attendre</span>
-        <span class="hint-tag" onclick="quickSearch('créer')">Créer</span>
-        <span class="hint-tag" onclick="quickSearch('supprimer')">Supprimer</span>
-        <span class="hint-tag" onclick="quickSearch('variable')">Variables</span>
-        <span class="hint-tag" onclick="quickSearch('api')">API/HTTP</span>
+    <div class="search-area">
+        <div class="search-wrapper">
+            <i class="ti ti-search search-icon"></i>
+            <input type="text" id="searchInput" placeholder="Cherchez une action (ex: cliquer, attendre, supprimer, api, variable...)">
+        </div>
+        <div class="filters" id="filterBar">
+            <button class="filter-btn active" onclick="filterByLib('all', this)">Tout voir</button>
+        </div>
     </div>
-</div>
 
-<div class="results-grid" id="resultsGrid">
-    </div>
+    <div id="mainGrid"></div>
+</div>
 
 <script>
-    // Chargement des données (basé sur ton fichier)
-    const COMMANDS = [
+    // TOUTES les données extraites de votre fichier
+    const DATA = [
         // CLI
-        { name: "robot <fichier>", lib: "CLI", cat: "cli", desc: "Lancer l'exécution de vos tests.", example: "robot tests/mon_test.robot", tags: "exécuter lancer run" },
-        { name: "robot --variable VAR:VAL", lib: "CLI", cat: "cli", desc: "Passer une variable au test depuis le terminal.", example: "robot --variable ENV:prod tests/", tags: "variable environnement" },
+        { cat: 'cli', lib: 'Robot CLI', name: 'robot <suite>', desc: 'Exécute un fichier ou dossier de tests.', ex: 'robot tests/login.robot', tags: 'lancer run exécuter' },
+        { cat: 'cli', lib: 'Robot CLI', name: 'robot --include TAG', desc: 'Exécute uniquement les tests avec ce tag.', ex: 'robot --include smoke tests/', tags: 'filtrer tag' },
+        { cat: 'cli', lib: 'Robot CLI', name: 'robot --variable VAR:VAL', desc: 'Définit une variable globale en ligne de commande.', ex: 'robot --variable ENV:prod tests/', tags: 'variable cmd' },
+        { cat: 'cli', lib: 'Robot CLI', name: 'robot --dryrun', desc: 'Vérifie la syntaxe sans exécuter les tests.', ex: 'robot --dryrun tests/', tags: 'test check syntaxe' },
         
-        // BuiltIn (Extraits)
-        { name: "Should Be Equal", lib: "BuiltIn", cat: "builtin", desc: "Vérifier que deux éléments sont identiques.", example: "Should Be Equal    ${resultat}    succès", tags: "vérifier égalité assertion check" },
-        { name: "Log To Console", lib: "BuiltIn", cat: "builtin", desc: "Afficher un message dans le terminal pendant le test.", example: "Log To Console    Étape 1 terminée", tags: "afficher print voir" },
-        { name: "Wait Until Keyword Succeeds", lib: "BuiltIn", cat: "builtin", desc: "Attendre qu'une action réussisse (réessaie plusieurs fois).", example: "Wait Until Keyword Succeeds    10s    2s    Action", tags: "attendre retry boucle pause" },
-        { name: "Run Keyword If", lib: "BuiltIn", cat: "builtin", desc: "Exécuter une action seulement si une condition est vraie.", example: "Run Keyword If    ${age} > 18    Valider", tags: "si condition logic" },
-        { name: "Set Variable", lib: "BuiltIn", cat: "builtin", desc: "Créer ou modifier une variable.", example: "${nom}=    Set Variable    Robot", tags: "créer assigner stocker" },
+        // BUILTIN
+        { cat: 'builtin', lib: 'BuiltIn', name: 'Log', desc: 'Affiche un message dans le log (INFO, DEBUG, etc.).', ex: 'Log    Message de log', tags: 'afficher print voir' },
+        { cat: 'builtin', lib: 'BuiltIn', name: 'Should Be Equal', desc: 'Vérifie que deux valeurs sont identiques.', ex: 'Should Be Equal    ${a}    ${b}', tags: 'vérifier égalité assertion' },
+        { name: "Should Contain", lib: "BuiltIn", cat: "builtin", desc: "Vérifie qu'une chaîne ou liste contient un élément.", ex: "Should Contain    ${text}    hello", tags: "chercher trouver contient" },
+        { name: "Set Variable", lib: "BuiltIn", cat: "builtin", desc: "Assigne une valeur à une variable.", ex: "${name}=    Set Variable    Alice", tags: "créer assigner stocker" },
+        { name: "Evaluate", lib: "BuiltIn", cat: "builtin", desc: "Évalue une expression Python et retourne le résultat.", ex: "${sum}=    Evaluate    2 + 2", tags: "calcul python math" },
+        { name: "Run Keyword If", lib: "BuiltIn", cat: "builtin", desc: "Exécute un keyword si la condition est vraie.", ex: "Run Keyword If    '${env}'=='prod'    Action", tags: "si condition logic" },
+        { name: "Wait Until Keyword Succeeds", lib: "BuiltIn", cat: "builtin", desc: "Réessaie un keyword jusqu'à réussite ou timeout.", ex: "Wait Until Keyword Succeeds    30s    5s    Action", tags: "attendre retry patience" },
         
+        // STRING
+        { cat: 'string', lib: 'String', name: 'Convert To Uppercase', desc: 'Passe tout le texte en majuscules.', ex: '${u}=    Convert To Uppercase    hello', tags: 'texte format majuscule' },
+        { cat: 'string', lib: 'String', name: 'Replace String', desc: 'Remplace un texte par un autre.', ex: '${new}=    Replace String    texte    ancien    nouveau', tags: 'modifier changer texte' },
+        { cat: 'string', lib: 'String', name: 'Split String', desc: 'Divise une chaîne selon un séparateur.', ex: '${parts}=    Split String    a,b,c    ,', tags: 'couper séparer liste' },
+
+        // COLLECTIONS
+        { cat: 'col', lib: 'Collections', name: 'Append To List', desc: 'Ajoute un élément à la fin d\'une liste.', ex: 'Append To List    ${list}    item', tags: 'ajouter liste collection' },
+        { cat: 'col', lib: 'Collections', name: 'Get From Dictionary', desc: 'Récupère la valeur d\'une clé dans un dictionnaire.', ex: '${v}=    Get From Dictionary    ${dict}    key', tags: 'clé valeur dict' },
+        { cat: 'col', lib: 'Collections', name: 'Remove Duplicates', desc: 'Enlève les doublons d\'une liste.', ex: '${u}=    Remove Duplicates    ${list}', tags: 'nettoyer doublon' },
+
         // OS
-        { name: "File Should Exist", lib: "OperatingSystem", cat: "os", desc: "Vérifier si un fichier est présent sur l'ordinateur.", example: "File Should Exist    C:/rapport.pdf", tags: "fichier document vérifier trouver" },
-        { name: "Create Directory", lib: "OperatingSystem", cat: "os", desc: "Créer un nouveau dossier.", example: "Create Directory    ./resultats", tags: "dossier créer répertoire folder" },
-        
-        // Collections
-        { name: "Append To List", lib: "Collections", cat: "collections", desc: "Ajouter un élément à la fin d'une liste.", example: "Append To List    ${ma_liste}    nouvel_objet", tags: "liste ajouter remplir" },
-        
-        // HTTP
-        { name: "GET On Session", lib: "RequestsLibrary", cat: "http", desc: "Envoyer une requête API (GET) pour récupérer des données.", example: "GET On Session    ma_session    /users", tags: "api http récupérer web service" },
-        { name: "POST On Session", lib: "RequestsLibrary", cat: "http", desc: "Envoyer des données vers une API (création).", example: "POST On Session    ma_session    /login    json=${corps}", tags: "api http envoyer créer" }
-        
-        // Tu peux rajouter le reste des commandes du HTML ici en suivant ce format...
+        { cat: 'os', lib: 'OperatingSystem', name: 'File Should Exist', desc: 'Vérifie la présence d\'un fichier.', ex: 'File Should Exist    path/to/file', tags: 'fichier présent vérifier' },
+        { cat: 'os', lib: 'OperatingSystem', name: 'Create Directory', desc: 'Crée un nouveau dossier.', ex: 'Create Directory    ./new_folder', tags: 'dossier créer répertoire' },
+        { cat: 'os', lib: 'OperatingSystem', name: 'Remove File', desc: 'Supprime un fichier définitivement.', ex: 'Remove File    temp.log', tags: 'supprimer effacer delete' },
+        { cat: 'os', lib: 'OperatingSystem', name: 'Run', desc: 'Exécute une commande shell et renvoie le texte.', ex: '${out}=    Run    ls -la', tags: 'shell terminal cmd' },
+
+        // PROCESS
+        { cat: 'proc', lib: 'Process', name: 'Start Process', desc: 'Lance un programme en arrière-plan.', ex: '${p}=    Start Process    python    script.py', tags: 'lancer programme process' },
+        { cat: 'proc', lib: 'Process', name: 'Terminate Process', desc: 'Arrête un processus en cours.', ex: 'Terminate Process    ${p}', tags: 'tuer arrêter stop' },
+
+        // REQUESTS (HTTP/API)
+        { cat: 'req', lib: 'Requests', name: 'Create Session', desc: 'Prépare une connexion vers une API.', ex: 'Create Session    api    https://url.com', tags: 'api connexion web' },
+        { cat: 'req', lib: 'Requests', name: 'GET On Session', desc: 'Envoie une requête GET.', ex: '${r}=    GET On Session    api    /users', tags: 'récupérer api http' },
+        { cat: 'req', lib: 'Requests', name: 'POST On Session', desc: 'Envoie des données via POST.', ex: '${r}=    POST On Session    api    /data    json=${j}', tags: 'envoyer créer api' },
+
+        // PABOT
+        { cat: 'pabot', lib: 'Pabot', name: 'pabot --processes N', desc: 'Lance les tests en parallèle sur N processeurs.', ex: 'pabot --processes 4 tests/', tags: 'parallèle rapide performance' },
+        { cat: 'pabot', lib: 'Pabot', name: 'Acquire Lock', desc: 'Verrouille une ressource pour un seul test à la fois.', ex: 'Acquire Lock    database', tags: 'verrou synchro' }
     ];
 
-    const resultsGrid = document.getElementById('resultsGrid');
-    const searchInput = document.getElementById('searchInput');
+    const grid = document.getElementById('mainGrid');
+    const input = document.getElementById('searchInput');
+    const filterBar = document.getElementById('filterBar');
 
-    function displayCommands(list) {
-        resultsGrid.innerHTML = '';
-        
+    // Générer les boutons de filtres dynamiquement
+    const libs = [...new Set(DATA.map(d => d.lib))];
+    libs.forEach(l => {
+        const btn = document.createElement('button');
+        btn.className = 'filter-btn';
+        btn.innerText = l;
+        btn.onclick = (e) => filterByLib(l, e.target);
+        filterBar.appendChild(btn);
+    });
+
+    function render(list) {
         if (list.length === 0) {
-            resultsGrid.innerHTML = '<div class="no-results">Aucune commande ne correspond à votre recherche.</div>';
+            grid.innerHTML = `<div class="no-results"><i class="ti ti-search-off" style="font-size:30px"></i><br>Aucune commande trouvée...</div>`;
             return;
         }
-
-        list.forEach(cmd => {
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.innerHTML = `
-                <span class="library-badge bg-${cmd.cat}">${cmd.lib}</span>
-                <div class="cmd-name">${cmd.name}</div>
-                <div class="cmd-desc">${cmd.desc}</div>
-                <div class="cmd-example" onclick="copyToClipboard('${cmd.example}')" title="Cliquez pour copier">
-                    ${cmd.example}
+        grid.innerHTML = list.map(item => `
+            <div class="card">
+                <span class="badge c-${item.cat}">${item.lib}</span>
+                <div class="cmd-name">${item.name}</div>
+                <div class="cmd-desc">${item.desc}</div>
+                <div class="cmd-ex" onclick="copyText('${item.ex}')" title="Cliquer pour copier">
+                    ${item.ex}
                 </div>
-            `;
-            resultsGrid.appendChild(card);
-        });
+            </div>
+        `).join('');
     }
 
-    function filterCommands() {
-        const query = searchInput.value.toLowerCase();
-        const filtered = COMMANDS.filter(cmd => {
-            return cmd.name.toLowerCase().includes(query) || 
-                   cmd.desc.toLowerCase().includes(query) || 
-                   cmd.tags.toLowerCase().includes(query) ||
-                   cmd.lib.toLowerCase().includes(query);
-        });
-        displayCommands(filtered);
+    function search() {
+        const query = input.value.toLowerCase().trim();
+        const filtered = DATA.filter(item => 
+            item.name.toLowerCase().includes(query) || 
+            item.desc.toLowerCase().includes(query) || 
+            item.tags.toLowerCase().includes(query)
+        );
+        render(filtered);
     }
 
-    function quickSearch(text) {
-        searchInput.value = text;
-        filterCommands();
+    function filterByLib(lib, btn) {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        input.value = "";
+        if(lib === 'all') render(DATA);
+        else render(DATA.filter(d => d.lib === lib));
     }
 
-    function copyToClipboard(text) {
-        navigator.clipboard.writeText(text).then(() => {
-            alert('Copié dans le presse-papier !');
-        });
+    function copyText(text) {
+        navigator.clipboard.writeText(text);
+        // Optionnel : petit feedback visuel
     }
 
-    searchInput.addEventListener('input', filterCommands);
-
-    // Initialisation
-    displayCommands(COMMANDS);
+    input.addEventListener('input', search);
+    render(DATA); // Initialisation
 </script>
 
 </body>
